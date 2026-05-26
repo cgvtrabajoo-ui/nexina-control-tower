@@ -92,7 +92,7 @@ const labels = {
 function iso(d){ return d.toISOString().slice(0,10); }
 function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
 function rangeFor(period, custom){
-  const today = new Date('2026-05-21T12:00:00');
+  const today = new Date();
   if(period==='hoy') return { from: iso(today), to: iso(today), label:'Hoy' };
   if(period==='semana') return { from: iso(addDays(today,-6)), to: iso(today), label:'Últimos 7 días' };
   if(period==='mes') return { from: iso(addDays(today,-29)), to: iso(today), label:'Últimos 30 días' };
@@ -189,7 +189,7 @@ function SectorDashboard({perfil, rows}){
 }
 
 function App(){
-  const [user,setUser]=useState(null), [perfil,setPerfil]=useState(null), [tab,setTab]=useState('dashboard'), [period,setPeriod]=useState('semana'), [custom,setCustom]=useState({from:'2026-05-15',to:'2026-05-21'}), [rows,setRows]=useState(demoRows), [prevRows,setPrevRows]=useState(demoRows), [loading,setLoading]=useState(false);
+  const [user,setUser]=useState(null), [perfil,setPerfil]=useState(null), [tab,setTab]=useState('dashboard'), [period,setPeriod]=useState('semana'), [custom,setCustom]=useState({from:'',to:''}), [rows,setRows]=useState(demoRows), [prevRows,setPrevRows]=useState(demoRows), [loading,setLoading]=useState(false);
   const range=useMemo(()=>rangeFor(period,custom),[period,custom]);
   async function loadUser(u){
     if(!u) return;
