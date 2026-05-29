@@ -42,6 +42,15 @@ const demoRows = {
     { fecha:'2026-05-20', skus_controlados:95, skus_con_diferencia:3, unidades_teoricas:7100, unidades_fisicas:7078, diferencias_detectadas:3, diferencias_resueltas:3 },
     { fecha:'2026-05-21', skus_controlados:72, skus_con_diferencia:5, unidades_teoricas:5300, unidades_fisicas:5261, diferencias_detectadas:5, diferencias_resueltas:2 }
   ]
+kpi_comex: [
+  {
+    fecha:'2026-05-21',
+    contenedores_transito:0,
+    usd_en_agua:0,
+    unidades_pendientes_recibir:0,
+    contenedores_atrasados:0
+  }
+]
 };
 
 const sectorFields = {
@@ -49,8 +58,9 @@ const sectorFields = {
   Transporte: ['viajes_programados','viajes_realizados','viajes_demorados','viajes_cumplidos','costo_transporte','facturacion_despachada'],
   Inventario: ['skus_controlados','skus_con_diferencia','unidades_teoricas','unidades_fisicas','diferencias_detectadas','diferencias_resueltas','diferencias_pendientes_actuales','skus_totales_activos','skus_con_diferencia_pendiente','unidades_teoricas_totales','unidades_con_diferencia_pendiente'],
   Administracion: ['pedidos_entregados','pedidos_entregados_a_tiempo','pedidos_completos','pedidos_otif','remitos_pendientes','cambios_estado_pendientes']
+Comex: ['contenedores_transito','usd_en_agua','unidades_pendientes_recibir','contenedores_atrasados'],
 };
-const sectorTable = { Deposito:'kpi_deposito', Transporte:'kpi_transporte', Inventario:'kpi_inventario', Administracion:'kpi_administracion' };
+const sectorTable = { Deposito:'kpi_deposito', Transporte:'kpi_transporte', Inventario:'kpi_inventario', Administracion:'kpi_administracion',Comex:'kpi_comex', };
 
 function normalizeSectorName(value){
   const v = String(value || '').trim().toLowerCase();
@@ -86,7 +96,10 @@ const labels = {
   pedidos_a_preparar:'Pedidos a preparar', pedidos_preparados:'Pedidos preparados', pedidos_pendientes:'Pedidos pendientes', posiciones_ocupadas:'Posiciones ocupadas', posiciones_totales:'Posiciones totales', incidencias_abiertas:'Incidencias abiertas', incidencias_cerradas:'Incidencias cerradas',
   viajes_programados:'Viajes programados', viajes_realizados:'Viajes realizados', viajes_demorados:'Viajes demorados', viajes_cumplidos:'Viajes cumplidos', costo_transporte:'Costo transporte', facturacion_despachada:'Facturación despachada',
   skus_controlados:'SKUs controlados', skus_con_diferencia:'SKUs con diferencia', unidades_teoricas:'Unidades teóricas', unidades_fisicas:'Unidades físicas', diferencias_detectadas:'Diferencias detectadas', diferencias_resueltas:'Diferencias resueltas', diferencias_pendientes_actuales:'Diferencias pendientes actuales', skus_totales_activos:'SKUs totales activos', skus_con_diferencia_pendiente:'SKUs con diferencia pendiente', unidades_teoricas_totales:'Unidades teóricas totales', unidades_con_diferencia_pendiente:'Unidades con diferencia pendiente',
-  pedidos_entregados:'Pedidos entregados', pedidos_entregados_a_tiempo:'Pedidos entregados a tiempo', pedidos_completos:'Pedidos completos', pedidos_otif:'Pedidos OTIF', remitos_pendientes:'Remitos pendientes', cambios_estado_pendientes:'Cambios de estado pendientes'
+  pedidos_entregados:'Pedidos entregados', pedidos_entregados_a_tiempo:'Pedidos entregados a tiempo', pedidos_completos:'Pedidos completos', pedidos_otif:'Pedidos OTIF', remitos_pendientes:'Remitos pendientes', cambios_estado_pendientes:'Cambios de estado pendientes',contenedores_transito:'Contenedores en tránsito',
+usd_en_agua:'USD en el agua',
+unidades_pendientes_recibir:'Unidades pendientes de recibir',
+contenedores_atrasados:'Contenedores atrasados',
 };
 
 function iso(d){ return d.toISOString().slice(0,10); }
@@ -103,7 +116,7 @@ function latest(rows, key){ return rows.length ? Number(rows[rows.length-1][key]
 function pct(n,d){ return d ? +(n/d*100).toFixed(1) : 0; }
 function avg(values){ return values.length ? +(values.reduce((a,b)=>a+b,0)/values.length).toFixed(1) : 0; }
 function calc(rows){
-  const a=rows.kpi_administracion||[], d=rows.kpi_deposito||[], t=rows.kpi_transporte||[], i=rows.kpi_inventario||[];
+  const a=rows.kpi_administracion||[], d=rows.kpi_deposito||[], t=rows.kpi_transporte||[], i=rows.kpi_inventario||[], c=rows.kpi_comex||[];
 
   const skusTotalesActivos = latest(i,'skus_totales_activos');
   const skusConDiferenciaPendiente = latest(i,'skus_con_diferencia_pendiente');
@@ -131,7 +144,10 @@ function calc(rows){
     incidenciasAbiertas: latest(d,'incidencias_abiertas'),
     costoTransporte: pct(sum(t,'costo_transporte'), sum(t,'facturacion_despachada')),
     cumplimientoTransportistas: pct(sum(t,'viajes_cumplidos'), sum(t,'viajes_programados'))
-  };
+    contenedoresTransito: latest(c,'contenedores_transito'),
+    usdEnAgua: latest(c,'usd_en_agua'),
+    unidadesPendientesRecibir: latest(c,'unidades_pendientes_recibir'),
+    contenedoresAtrasados: latest(c,'contenedores_atrasados'),};
 }
 function trendData(rows){
   const dates=[...new Set(Object.values(rows).flat().map(r=>r.fecha))].sort();
