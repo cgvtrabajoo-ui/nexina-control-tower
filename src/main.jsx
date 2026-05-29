@@ -60,10 +60,11 @@ kpi_ecommerce: [
     fecha:'2026-05-21',
     pedidos_recibidos:0,
     pedidos_preparados:0,
+    pedidos_cancelados:0,
     pedidos_despachados:0,
     pedidos_pendientes:0,
     unidades_preparadas:0,
-    incidencias:0
+    incidencias:0,
   }
 ]
 };
@@ -75,7 +76,7 @@ const sectorFields = {
   Administracion: ['pedidos_entregados','pedidos_entregados_a_tiempo','pedidos_completos','pedidos_otif','remitos_pendientes','cambios_estado_pendientes'],
 Comex: ['contenedores_transito','usd_en_agua','unidades_pendientes_recibir','contenedores_atrasados'],
 Recepciones: ['contenedores_programados','contenedores_recibidos','contenedores_pendientes','unidades_programadas','unidades_recibidas','unidades_pendientes','costo_camiones_contenedores','personal_asignado','horas_trabajadas'],
-Ecommerce:['pedidos_recibidos','pedidos_preparados','pedidos_despachados','pedidos_pendientes','unidades_preparadas','incidencias'],
+Ecommerce:['pedidos_recibidos','pedidos_preparados','pedidos_cancelados','pedidos_despachados','pedidos_pendientes','unidades_preparadas','incidencias'],
 };
 const sectorTable = { Deposito:'kpi_deposito', Transporte:'kpi_transporte', Inventario:'kpi_inventario', Administracion:'kpi_administracion',Comex:'kpi_comex',Recepciones:'kpi_recepciones',Ecommerce:'kpi_ecommerce',};
 
@@ -132,6 +133,7 @@ personal_asignado:'Personal asignado',
 horas_trabajadas:'Horas trabajadas',
 pedidos_recibidos:'Pedidos Ecommerce recibidos',
 pedidos_preparados:'Pedidos Ecommerce preparados',
+pedidos_cancelados:'Pedidos Ecommerce cancelados',
 pedidos_despachados:'Pedidos Ecommerce despachados',
 pedidos_pendientes:'Pedidos Ecommerce pendientes',
 unidades_preparadas:'Unidades Ecommerce preparadas',
@@ -192,7 +194,8 @@ function calc(rows){
     unidadesPendientes: latest(r,'unidades_pendientes'),
     costoCamionesContenedores: latest(r,'costo_camiones_contenedores'),
     productividadRecepcion: pct(latest(r,'unidades_recibidas'), latest(r,'horas_trabajadas')),
-    cumplimientoEcommerce: pct(sum(e,'pedidos_preparados'), sum(e,'pedidos_recibidos')),
+    cumplimientoEcommerce: pct(sum(e,'pedidos_preparados') + sum(e,'pedidos_cancelados'),sum(e,'pedidos_recibidos')),
+    cancelacionEcommerce: pct(sum(e,'pedidos_cancelados'),sum(e,'pedidos_recibidos')),
     pedidosPendientesEcommerce: latest(e,'pedidos_pendientes'),
     unidadesPreparadasEcommerce: sum(e,'unidades_preparadas'),
     incidenciasEcommerce: sum(e,'incidencias')};
@@ -238,6 +241,17 @@ function Dashboard({rows,prevRows,range,onRefresh,loading}){
   if(k.precision<98) alerts.push(['bad','Exactitud SKU debajo de 98%. Revisar diferencias pendientes de inventario.']);
   if(k.precisionUnidades<98) alerts.push(['bad','Exactitud por unidades debajo de 98%. Revisar unidades con diferencia pendiente.']);
   if(k.precision>=98 && k.precisionUnidades>=98) alerts.push(['ok','Exactitud de inventario dentro de objetivo ≥ 98%.']);
+if(k.pedidosPendientesEcommerce > 30)
+  alerts.push(['warn','Ecommerce con más de 30 pedidos pendientes de preparación.']);
+
+if(k.cancelacionEcommerce > 5)
+  alerts.push(['bad','Cancelación Ecommerce superior al 5%. Revisar stock, publicaciones o causas comerciales.']);
+
+if(k.contenedoresAtrasados > 0)
+  alerts.push(['bad','Existen contenedores atrasados en Comex.']);
+
+if(k.contenedoresPendientes > 2)
+  alerts.push(['warn','Recepciones con contenedores pendientes de descarga.']);
   return <main className="dashboard"><div className="kpi-grid"><KpiCard title="OTIF" value={k.otif} suffix="%" icon={CheckCircle2} previous={p.otif}/><KpiCard title="OTD" value={k.otd} suffix="%" icon={Clock} previous={p.otd}/><KpiCard title="Pendientes" value={k.pendientes} icon={AlertTriangle} type="inverse" previous={p.pendientes}/><KpiCard title="Preparados" value={k.preparados} icon={Boxes} previous={p.preparados}/><KpiCard title="Despachados" value={k.despachados} icon={Truck} previous={p.despachados}/><KpiCard title="Ocupación" value={k.ocupacion} suffix="%" icon={Warehouse} type="occupancy" previous={p.ocupacion}/><KpiCard title="Exactitud SKU" value={k.precision} suffix="%" icon={Shield} previous={p.precision}/><KpiCard title="Exactitud Unid." value={k.precisionUnidades} suffix="%" icon={Shield} previous={p.precisionUnidades}/><KpiCard title="Dif. Pendientes" value={k.diferenciasPendientes} icon={AlertTriangle} type="inverse" previous={p.diferenciasPendientes}/><KpiCard title="Incidencias" value={k.incidenciasAbiertas} icon={AlertTriangle} type="inverse" previous={p.incidenciasAbiertas}/><KpiCard title="Costo Transp." value={k.costoTransporte} suffix="%" icon={DollarSign} type="inverse" previous={p.costoTransporte}/><KpiCard title="Transportistas" value={k.cumplimientoTransportistas} suffix="%" icon={Gauge} previous={p.cumplimientoTransportistas}/><KpiCard title="Cont. tránsito" value={k.contenedoresTransito} icon={Truck}/>
 <KpiCard title="USD en agua" value={k.usdEnAgua} icon={DollarSign}/>
 <KpiCard title="Unid. pend. recibir" value={k.unidadesPendientesRecibir} icon={Boxes}/>
@@ -248,7 +262,25 @@ function Dashboard({rows,prevRows,range,onRefresh,loading}){
 <KpiCard title="Costo camiones" value={k.costoCamionesContenedores} icon={DollarSign}/><KpiCard title="Ecommerce %" value={k.cumplimientoEcommerce} suffix="%" icon={Gauge}/>
 <KpiCard title="Ecom. pendientes" value={k.pedidosPendientesEcommerce} icon={AlertTriangle} type="inverse"/>
 <KpiCard title="Ecom. unidades" value={k.unidadesPreparadasEcommerce} icon={Boxes}/>
-<KpiCard title="Ecom. incidencias" value={k.incidenciasEcommerce} icon={AlertTriangle} type="inverse"/></div><section className="panel-grid"><div className="panel wide"><h2>Tendencia del período</h2><ResponsiveContainer width="100%" height={310}><LineChart data={td}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.08)"/><XAxis dataKey="fecha" stroke="#94a3b8"/><YAxis stroke="#94a3b8"/><Tooltip contentStyle={{background:'#020617',border:'1px solid #334155',borderRadius:12}}/><Line dataKey="OTIF" stroke="#22d3ee" strokeWidth={3}/><Line dataKey="OTD" stroke="#a78bfa" strokeWidth={3}/><Line dataKey="Ocupacion" stroke="#34d399" strokeWidth={3}/><Line dataKey="Inventario" stroke="#facc15" strokeWidth={3}/></LineChart></ResponsiveContainer></div><div className="panel"><h2>Lectura gerencial</h2><div className="executive"><strong>{k.otif<90 && p.otif>=90?'Mal día/período puntual contra una base anterior mejor. No sobrerreaccionar, pero auditar causas.': k.otif>=95?'Performance saludable. Mantener foco en consistencia y costos.':'Performance aceptable, pero por debajo de excelencia. Buscar desvíos repetidos.'}</strong><p>Vista: {range.label}. El botón actualizar reconsulta Supabase y recalcula el período completo, no solo el día.</p></div><div className="alerts">{alerts.map((a,i)=><div className={`alert ${a[0]}`} key={i}>{a[0]==='ok'?<CheckCircle2/>:<AlertTriangle/>}<span>{a[1]}</span></div>)}</div></div><div className="panel"><h2>Performance por sector</h2><ResponsiveContainer width="100%" height={250}><BarChart data={[{sector:'Depósito',valor: pct(sum(rows.kpi_deposito||[],'pedidos_preparados'), sum(rows.kpi_deposito||[],'pedidos_a_preparar'))},{sector:'Transporte',valor:k.cumplimientoTransportistas},{sector:'Inventario',valor:k.precision},{sector:'Admin',valor:k.otif}]}><XAxis dataKey="sector" stroke="#94a3b8"/><YAxis stroke="#94a3b8"/><Tooltip contentStyle={{background:'#020617',border:'1px solid #334155',borderRadius:12}}/><Bar dataKey="valor" fill="#22d3ee" radius={[10,10,0,0]}/></BarChart></ResponsiveContainer></div><div className="panel"><h2>Incidencias</h2><ResponsiveContainer width="100%" height={250}><PieChart><Pie data={[{name:'Cerradas',value:sum(rows.kpi_deposito||[],'incidencias_cerradas')},{name:'Abiertas',value:k.incidenciasAbiertas}]} dataKey="value" nameKey="name" outerRadius={88} label><Cell fill="#34d399"/><Cell fill="#f87171"/></Pie><Tooltip contentStyle={{background:'#020617',border:'1px solid #334155',borderRadius:12}}/></PieChart></ResponsiveContainer></div></section></main>
+<KpiCard title="Ecom. incidencias" value={k.incidenciasEcommerce} icon={AlertTriangle} type="inverse"/><KpiCard title="Cancelación Ecom." value={k.cancelacionEcommerce} suffix="%" icon={AlertTriangle} type="inverse"/></div><section className="panel-grid"><div className="panel wide"><h2>Tendencia del período</h2><ResponsiveContainer width="100%" height={310}><LineChart data={td}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.08)"/><XAxis dataKey="fecha" stroke="#94a3b8"/><YAxis stroke="#94a3b8"/><Tooltip contentStyle={{background:'#020617',border:'1px solid #334155',borderRadius:12}}/><Line dataKey="OTIF" stroke="#22d3ee" strokeWidth={3}/><Line dataKey="OTD" stroke="#a78bfa" strokeWidth={3}/><Line dataKey="Ocupacion" stroke="#34d399" strokeWidth={3}/><Line dataKey="Inventario" stroke="#facc15" strokeWidth={3}/></LineChart></ResponsiveContainer></div><div className="panel"><h2>Lectura gerencial</h2><div className="executive"><strong>{k.otif<90 && p.otif>=90?'Mal día/período puntual contra una base anterior mejor. No sobrerreaccionar, pero auditar causas.': k.otif>=95?'Performance saludable. Mantener foco en consistencia y costos.':'Performance aceptable, pero por debajo de excelencia. Buscar desvíos repetidos.'}</strong><p>Vista: {range.label}. El botón actualizar reconsulta Supabase y recalcula el período completo, no solo el día.</p></div><div className="alerts">{alerts.map((a,i)=><div className={`alert ${a[0]}`} key={i}>{a[0]==='ok'?<CheckCircle2/>:<AlertTriangle/>}<span>{a[1]}</span></div>)}</div></div><div className="panel"><h2>Performance por sector</h2><ResponsiveContainer width="100%" height={250}><BarChart data={[
+ {sector:'Depósito',valor:pct(sum(rows.kpi_deposito||[],'pedidos_preparados'),sum(rows.kpi_deposito||[],'pedidos_a_preparar'))},
+
+ {sector:'Transporte',valor:k.cumplimientoTransportistas},
+
+ {sector:'Inventario',valor:k.precision},
+
+ {sector:'Admin',valor:k.otif},
+
+ {sector:'Comex',valor:k.contenedoresTransito>0
+   ? pct(k.contenedoresTransito-k.contenedoresAtrasados,k.contenedoresTransito)
+   : 100},
+
+ {sector:'Recepción',valor:k.contenedoresProgramados>0
+   ? pct(k.contenedoresRecibidos,k.contenedoresProgramados)
+   : 100},
+
+ {sector:'Ecommerce',valor:k.cumplimientoEcommerce}
+]}><XAxis dataKey="sector" stroke="#94a3b8"/><YAxis stroke="#94a3b8"/><Tooltip contentStyle={{background:'#020617',border:'1px solid #334155',borderRadius:12}}/><Bar dataKey="valor" fill="#22d3ee" radius={[10,10,0,0]}/></BarChart></ResponsiveContainer></div><div className="panel"><h2>Incidencias</h2><ResponsiveContainer width="100%" height={250}><PieChart><Pie data={[{name:'Cerradas',value:sum(rows.kpi_deposito||[],'incidencias_cerradas')},{name:'Abiertas',value:k.incidenciasAbiertas}]} dataKey="value" nameKey="name" outerRadius={88} label><Cell fill="#34d399"/><Cell fill="#f87171"/></Pie><Tooltip contentStyle={{background:'#020617',border:'1px solid #334155',borderRadius:12}}/></PieChart></ResponsiveContainer></div></section></main>
 }
 function DataEntry({perfil,onSaved}){
   const sectors = accessSectors(perfil);
