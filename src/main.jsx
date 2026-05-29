@@ -47,7 +47,7 @@ const demoRows = {
 const sectorFields = {
   Deposito: ['pedidos_a_preparar','pedidos_preparados','pedidos_pendientes','posiciones_ocupadas','posiciones_totales','incidencias_abiertas','incidencias_cerradas'],
   Transporte: ['viajes_programados','viajes_realizados','viajes_demorados','viajes_cumplidos','costo_transporte','facturacion_despachada'],
-  Inventario: ['skus_controlados','skus_con_diferencia','unidades_teoricas','unidades_fisicas','diferencias_detectadas','diferencias_resueltas'],
+  Inventario: ['skus_controlados','skus_con_diferencia','unidades_teoricas','unidades_fisicas','diferencias_detectadas','diferencias_resueltas','diferencias_pendientes_actuales','skus_totales_activos','skus_con_diferencia_pendiente','unidades_teoricas_totales','unidades_con_diferencia_pendiente'],
   Administracion: ['pedidos_entregados','pedidos_entregados_a_tiempo','pedidos_completos','pedidos_otif','remitos_pendientes','cambios_estado_pendientes']
 };
 const sectorTable = { Deposito:'kpi_deposito', Transporte:'kpi_transporte', Inventario:'kpi_inventario', Administracion:'kpi_administracion' };
@@ -85,7 +85,7 @@ function accessSectors(perfil){
 const labels = {
   pedidos_a_preparar:'Pedidos a preparar', pedidos_preparados:'Pedidos preparados', pedidos_pendientes:'Pedidos pendientes', posiciones_ocupadas:'Posiciones ocupadas', posiciones_totales:'Posiciones totales', incidencias_abiertas:'Incidencias abiertas', incidencias_cerradas:'Incidencias cerradas',
   viajes_programados:'Viajes programados', viajes_realizados:'Viajes realizados', viajes_demorados:'Viajes demorados', viajes_cumplidos:'Viajes cumplidos', costo_transporte:'Costo transporte', facturacion_despachada:'Facturación despachada',
-  skus_controlados:'SKUs controlados', skus_con_diferencia:'SKUs con diferencia', unidades_teoricas:'Unidades teóricas', unidades_fisicas:'Unidades físicas', diferencias_detectadas:'Diferencias detectadas', diferencias_resueltas:'Diferencias resueltas',
+  skus_controlados:'SKUs controlados', skus_con_diferencia:'SKUs con diferencia', unidades_teoricas:'Unidades teóricas', unidades_fisicas:'Unidades físicas', diferencias_detectadas:'Diferencias detectadas', diferencias_resueltas:'Diferencias resueltas', diferencias_pendientes_actuales:'Diferencias pendientes actuales', skus_totales_activos:'SKUs totales activos', skus_con_diferencia_pendiente:'SKUs con diferencia pendiente', unidades_teoricas_totales:'Unidades teóricas totales', unidades_con_diferencia_pendiente:'Unidades con diferencia pendiente',
   pedidos_entregados:'Pedidos entregados', pedidos_entregados_a_tiempo:'Pedidos entregados a tiempo', pedidos_completos:'Pedidos completos', pedidos_otif:'Pedidos OTIF', remitos_pendientes:'Remitos pendientes', cambios_estado_pendientes:'Cambios de estado pendientes'
 };
 
@@ -104,6 +104,20 @@ function pct(n,d){ return d ? +(n/d*100).toFixed(1) : 0; }
 function avg(values){ return values.length ? +(values.reduce((a,b)=>a+b,0)/values.length).toFixed(1) : 0; }
 function calc(rows){
   const a=rows.kpi_administracion||[], d=rows.kpi_deposito||[], t=rows.kpi_transporte||[], i=rows.kpi_inventario||[];
+
+  const skusTotalesActivos = latest(i,'skus_totales_activos');
+  const skusConDiferenciaPendiente = latest(i,'skus_con_diferencia_pendiente');
+  const unidadesTeoricasTotales = latest(i,'unidades_teoricas_totales');
+  const unidadesConDiferenciaPendiente = latest(i,'unidades_con_diferencia_pendiente');
+
+  const exactitudSku = skusTotalesActivos > 0
+    ? pct(skusTotalesActivos - skusConDiferenciaPendiente, skusTotalesActivos)
+    : pct(sum(i,'skus_controlados')-sum(i,'skus_con_diferencia'), sum(i,'skus_controlados'));
+
+  const exactitudUnidades = unidadesTeoricasTotales > 0
+    ? +(100 - ((unidadesConDiferenciaPendiente / unidadesTeoricasTotales) * 100)).toFixed(1)
+    : pct(sum(i,'unidades_fisicas'), sum(i,'unidades_teoricas'));
+
   return {
     otif: pct(sum(a,'pedidos_otif'), sum(a,'pedidos_entregados')),
     otd: pct(sum(a,'pedidos_entregados_a_tiempo'), sum(a,'pedidos_entregados')),
@@ -111,7 +125,9 @@ function calc(rows){
     preparados: sum(d,'pedidos_preparados'),
     despachados: sum(a,'pedidos_entregados'),
     ocupacion: pct(latest(d,'posiciones_ocupadas'), latest(d,'posiciones_totales')),
-    precision: pct(sum(i,'skus_controlados')-sum(i,'skus_con_diferencia'), sum(i,'skus_controlados')),
+    precision: exactitudSku,
+    precisionUnidades: exactitudUnidades,
+    diferenciasPendientes: latest(i,'diferencias_pendientes_actuales'),
     incidenciasAbiertas: latest(d,'incidencias_abiertas'),
     costoTransporte: pct(sum(t,'costo_transporte'), sum(t,'facturacion_despachada')),
     cumplimientoTransportistas: pct(sum(t,'viajes_cumplidos'), sum(t,'viajes_programados'))
@@ -155,15 +171,43 @@ function Dashboard({rows,prevRows,range,onRefresh,loading}){
   if(k.ocupacion>85) alerts.push(['bad','Ocupación crítica: riesgo de saturación operativa.']);
   else if(k.ocupacion>75) alerts.push(['warn','Ocupación alta: monitorear espacio y reubicaciones.']);
   if(k.incidenciasAbiertas>8) alerts.push(['bad','Incidencias abiertas elevadas. Priorizar cierre antes del fin del día.']);
-  if(k.precision>=95) alerts.push(['ok','Precisión de inventario dentro de objetivo.']);
-  return <main className="dashboard"><div className="kpi-grid"><KpiCard title="OTIF" value={k.otif} suffix="%" icon={CheckCircle2} previous={p.otif}/><KpiCard title="OTD" value={k.otd} suffix="%" icon={Clock} previous={p.otd}/><KpiCard title="Pendientes" value={k.pendientes} icon={AlertTriangle} type="inverse" previous={p.pendientes}/><KpiCard title="Preparados" value={k.preparados} icon={Boxes} previous={p.preparados}/><KpiCard title="Despachados" value={k.despachados} icon={Truck} previous={p.despachados}/><KpiCard title="Ocupación" value={k.ocupacion} suffix="%" icon={Warehouse} type="occupancy" previous={p.ocupacion}/><KpiCard title="Inventario" value={k.precision} suffix="%" icon={Shield} previous={p.precision}/><KpiCard title="Incidencias" value={k.incidenciasAbiertas} icon={AlertTriangle} type="inverse" previous={p.incidenciasAbiertas}/><KpiCard title="Costo Transp." value={k.costoTransporte} suffix="%" icon={DollarSign} type="inverse" previous={p.costoTransporte}/><KpiCard title="Transportistas" value={k.cumplimientoTransportistas} suffix="%" icon={Gauge} previous={p.cumplimientoTransportistas}/></div><section className="panel-grid"><div className="panel wide"><h2>Tendencia del período</h2><ResponsiveContainer width="100%" height={310}><LineChart data={td}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.08)"/><XAxis dataKey="fecha" stroke="#94a3b8"/><YAxis stroke="#94a3b8"/><Tooltip contentStyle={{background:'#020617',border:'1px solid #334155',borderRadius:12}}/><Line dataKey="OTIF" stroke="#22d3ee" strokeWidth={3}/><Line dataKey="OTD" stroke="#a78bfa" strokeWidth={3}/><Line dataKey="Ocupacion" stroke="#34d399" strokeWidth={3}/><Line dataKey="Inventario" stroke="#facc15" strokeWidth={3}/></LineChart></ResponsiveContainer></div><div className="panel"><h2>Lectura gerencial</h2><div className="executive"><strong>{k.otif<90 && p.otif>=90?'Mal día/período puntual contra una base anterior mejor. No sobrerreaccionar, pero auditar causas.': k.otif>=95?'Performance saludable. Mantener foco en consistencia y costos.':'Performance aceptable, pero por debajo de excelencia. Buscar desvíos repetidos.'}</strong><p>Vista: {range.label}. El botón actualizar reconsulta Supabase y recalcula el período completo, no solo el día.</p></div><div className="alerts">{alerts.map((a,i)=><div className={`alert ${a[0]}`} key={i}>{a[0]==='ok'?<CheckCircle2/>:<AlertTriangle/>}<span>{a[1]}</span></div>)}</div></div><div className="panel"><h2>Performance por sector</h2><ResponsiveContainer width="100%" height={250}><BarChart data={[{sector:'Depósito',valor: avg(td.map(x=>x.Ocupacion))},{sector:'Transporte',valor:k.cumplimientoTransportistas},{sector:'Inventario',valor:k.precision},{sector:'Admin',valor:k.otif}]}><XAxis dataKey="sector" stroke="#94a3b8"/><YAxis stroke="#94a3b8"/><Tooltip contentStyle={{background:'#020617',border:'1px solid #334155',borderRadius:12}}/><Bar dataKey="valor" fill="#22d3ee" radius={[10,10,0,0]}/></BarChart></ResponsiveContainer></div><div className="panel"><h2>Incidencias</h2><ResponsiveContainer width="100%" height={250}><PieChart><Pie data={[{name:'Cerradas',value:sum(rows.kpi_deposito||[],'incidencias_cerradas')},{name:'Abiertas',value:k.incidenciasAbiertas}]} dataKey="value" nameKey="name" outerRadius={88} label><Cell fill="#34d399"/><Cell fill="#f87171"/></Pie><Tooltip contentStyle={{background:'#020617',border:'1px solid #334155',borderRadius:12}}/></PieChart></ResponsiveContainer></div></section></main>
+  if(k.precision<98) alerts.push(['bad','Exactitud SKU debajo de 98%. Revisar diferencias pendientes de inventario.']);
+  if(k.precisionUnidades<98) alerts.push(['bad','Exactitud por unidades debajo de 98%. Revisar unidades con diferencia pendiente.']);
+  if(k.precision>=98 && k.precisionUnidades>=98) alerts.push(['ok','Exactitud de inventario dentro de objetivo ≥ 98%.']);
+  return <main className="dashboard"><div className="kpi-grid"><KpiCard title="OTIF" value={k.otif} suffix="%" icon={CheckCircle2} previous={p.otif}/><KpiCard title="OTD" value={k.otd} suffix="%" icon={Clock} previous={p.otd}/><KpiCard title="Pendientes" value={k.pendientes} icon={AlertTriangle} type="inverse" previous={p.pendientes}/><KpiCard title="Preparados" value={k.preparados} icon={Boxes} previous={p.preparados}/><KpiCard title="Despachados" value={k.despachados} icon={Truck} previous={p.despachados}/><KpiCard title="Ocupación" value={k.ocupacion} suffix="%" icon={Warehouse} type="occupancy" previous={p.ocupacion}/><KpiCard title="Exactitud SKU" value={k.precision} suffix="%" icon={Shield} previous={p.precision}/><KpiCard title="Exactitud Unid." value={k.precisionUnidades} suffix="%" icon={Shield} previous={p.precisionUnidades}/><KpiCard title="Dif. Pendientes" value={k.diferenciasPendientes} icon={AlertTriangle} type="inverse" previous={p.diferenciasPendientes}/><KpiCard title="Incidencias" value={k.incidenciasAbiertas} icon={AlertTriangle} type="inverse" previous={p.incidenciasAbiertas}/><KpiCard title="Costo Transp." value={k.costoTransporte} suffix="%" icon={DollarSign} type="inverse" previous={p.costoTransporte}/><KpiCard title="Transportistas" value={k.cumplimientoTransportistas} suffix="%" icon={Gauge} previous={p.cumplimientoTransportistas}/></div><section className="panel-grid"><div className="panel wide"><h2>Tendencia del período</h2><ResponsiveContainer width="100%" height={310}><LineChart data={td}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.08)"/><XAxis dataKey="fecha" stroke="#94a3b8"/><YAxis stroke="#94a3b8"/><Tooltip contentStyle={{background:'#020617',border:'1px solid #334155',borderRadius:12}}/><Line dataKey="OTIF" stroke="#22d3ee" strokeWidth={3}/><Line dataKey="OTD" stroke="#a78bfa" strokeWidth={3}/><Line dataKey="Ocupacion" stroke="#34d399" strokeWidth={3}/><Line dataKey="Inventario" stroke="#facc15" strokeWidth={3}/></LineChart></ResponsiveContainer></div><div className="panel"><h2>Lectura gerencial</h2><div className="executive"><strong>{k.otif<90 && p.otif>=90?'Mal día/período puntual contra una base anterior mejor. No sobrerreaccionar, pero auditar causas.': k.otif>=95?'Performance saludable. Mantener foco en consistencia y costos.':'Performance aceptable, pero por debajo de excelencia. Buscar desvíos repetidos.'}</strong><p>Vista: {range.label}. El botón actualizar reconsulta Supabase y recalcula el período completo, no solo el día.</p></div><div className="alerts">{alerts.map((a,i)=><div className={`alert ${a[0]}`} key={i}>{a[0]==='ok'?<CheckCircle2/>:<AlertTriangle/>}<span>{a[1]}</span></div>)}</div></div><div className="panel"><h2>Performance por sector</h2><ResponsiveContainer width="100%" height={250}><BarChart data={[{sector:'Depósito',valor: avg(td.map(x=>x.Ocupacion))},{sector:'Transporte',valor:k.cumplimientoTransportistas},{sector:'Inventario',valor:k.precision},{sector:'Admin',valor:k.otif}]}><XAxis dataKey="sector" stroke="#94a3b8"/><YAxis stroke="#94a3b8"/><Tooltip contentStyle={{background:'#020617',border:'1px solid #334155',borderRadius:12}}/><Bar dataKey="valor" fill="#22d3ee" radius={[10,10,0,0]}/></BarChart></ResponsiveContainer></div><div className="panel"><h2>Incidencias</h2><ResponsiveContainer width="100%" height={250}><PieChart><Pie data={[{name:'Cerradas',value:sum(rows.kpi_deposito||[],'incidencias_cerradas')},{name:'Abiertas',value:k.incidenciasAbiertas}]} dataKey="value" nameKey="name" outerRadius={88} label><Cell fill="#34d399"/><Cell fill="#f87171"/></Pie><Tooltip contentStyle={{background:'#020617',border:'1px solid #334155',borderRadius:12}}/></PieChart></ResponsiveContainer></div></section></main>
 }
 function DataEntry({perfil,onSaved}){
   const sectors = accessSectors(perfil);
   const [sector,setSector]=useState(sectors[0]||'Deposito'); const [form,setForm]=useState({fecha:iso(new Date()), responsable:perfil?.nombre||''}); const [msg,setMsg]=useState('');
   useEffect(()=>{ if(!sectors.includes(sector)) setSector(sectors[0]||'Deposito') },[perfil, sectors.join('|')]);
-  async function save(){ setMsg(''); const payload={fecha:form.fecha,responsable:form.responsable,observaciones:form.observaciones||''}; (sectorFields[sector]||[]).forEach(f=>payload[f]=Number(form[f])||0); if(!supabase){setMsg('Supabase no configurado.'); return} const {error}=await supabase.from(sectorTable[sector]).insert(payload); if(error) setMsg(error.message); else {setMsg('Carga guardada correctamente.'); onSaved();}}
-  return <div className="entry"><div className="panel wide"><h2>Carga diaria</h2><p>{perfil?.rol === 'gerente' ? 'Gerencia puede cargar/ver todos los sectores.' : `Tu perfil tiene habilitado: ${sectors.join(' / ')}`}</p><div className="tabs">{sectors.map(s=><button key={s} className={sector===s?'active':''} onClick={()=>setSector(s)}>{s}</button>)}</div><div className="form-grid"><label>Fecha<input type="date" value={form.fecha||''} onChange={e=>setForm({...form,fecha:e.target.value})}/></label><label>Responsable<input value={form.responsable||''} onChange={e=>setForm({...form,responsable:e.target.value})}/></label>{(sectorFields[sector]||[]).map(f=><label key={f}>{labels[f]}<input type="number" value={form[f]||''} onChange={e=>setForm({...form,[f]:e.target.value})}/></label>)}<label className="full">Observaciones<textarea value={form.observaciones||''} onChange={e=>setForm({...form,observaciones:e.target.value})}/></label></div><button className="primary" onClick={save}>Guardar carga</button>{msg&&<div className="msg">{msg}</div>}</div></div>
+  async function save(){
+    setMsg('');
+    const payload={fecha:form.fecha,responsable:form.responsable,observaciones:form.observaciones||''};
+    (sectorFields[sector]||[]).forEach(f=>payload[f]=Number(form[f])||0);
+    if(!supabase){setMsg('Supabase no configurado.'); return}
+
+    const table = sectorTable[sector];
+
+    // Regla clave: 1 fecha + 1 responsable + 1 sector = 1 sola carga.
+    // Si ya existe, actualiza. Si no existe, crea.
+    const existing = await supabase
+      .from(table)
+      .select('id')
+      .eq('fecha', payload.fecha)
+      .eq('responsable', payload.responsable)
+      .maybeSingle();
+
+    let result;
+    if(existing.data?.id){
+      result = await supabase.from(table).update(payload).eq('id', existing.data.id);
+    } else {
+      result = await supabase.from(table).insert(payload);
+    }
+
+    if(result.error) setMsg(result.error.message);
+    else {setMsg('Carga guardada/actualizada correctamente.'); onSaved();}
+  }
+  return <div className="entry"><div className="panel wide"><h2>Carga diaria</h2><p>{perfil?.rol === 'gerente' ? 'Gerencia puede cargar/ver todos los sectores.' : `Tu perfil tiene habilitado: ${sectors.join(' / ')}`}</p><div className="tabs">{sectors.map(s=><button key={s} className={sector===s?'active':''} onClick={()=>setSector(s)}>{s}</button>)}</div><div className="form-grid"><label>Fecha<input type="date" value={form.fecha||''} onChange={e=>setForm({...form,fecha:e.target.value})}/></label><label>Responsable<input value={form.responsable||''} onChange={e=>setForm({...form,responsable:e.target.value})}/></label>{(sectorFields[sector]||[]).map(f=><label key={f}>{labels[f]}<input type="number" value={form[f]||''} onChange={e=>setForm({...form,[f]:e.target.value})}/></label>)}<label className="full">Observaciones<textarea value={form.observaciones||''} onChange={e=>setForm({...form,observaciones:e.target.value})}/></label></div><button className="primary" onClick={save}>Guardar / Actualizar carga</button>{msg&&<div className="msg">{msg}</div>}</div></div>
 }
 
 function SectorDashboard({perfil, rows}){
@@ -179,7 +223,8 @@ function SectorDashboard({perfil, rows}){
   }
   if(sectors.includes('Inventario')){
     const i = rows.kpi_inventario || [];
-    cards.push(['SKUs controlados', sum(i,'skus_controlados'), Boxes], ['Precisión', pct(sum(i,'skus_controlados')-sum(i,'skus_con_diferencia'), sum(i,'skus_controlados')) + '%', Shield], ['Diferencias detectadas', sum(i,'diferencias_detectadas'), AlertTriangle], ['Diferencias resueltas', sum(i,'diferencias_resueltas'), CheckCircle2]);
+    const k = calc({kpi_inventario:i});
+    cards.push(['SKUs controlados', sum(i,'skus_controlados'), Boxes], ['Exactitud SKU', k.precision + '%', Shield], ['Exactitud Unid.', k.precisionUnidades + '%', Shield], ['Dif. pendientes', k.diferenciasPendientes, AlertTriangle], ['Diferencias detectadas', sum(i,'diferencias_detectadas'), AlertTriangle], ['Diferencias resueltas', sum(i,'diferencias_resueltas'), CheckCircle2]);
   }
   if(sectors.includes('Administracion')){
     const a = rows.kpi_administracion || [];
