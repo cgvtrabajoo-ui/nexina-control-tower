@@ -41,14 +41,29 @@ const demoRows = {
     { fecha:'2026-05-19', skus_controlados:86, skus_con_diferencia:3, unidades_teoricas:6800, unidades_fisicas:6775, diferencias_detectadas:3, diferencias_resueltas:3 },
     { fecha:'2026-05-20', skus_controlados:95, skus_con_diferencia:3, unidades_teoricas:7100, unidades_fisicas:7078, diferencias_detectadas:3, diferencias_resueltas:3 },
     { fecha:'2026-05-21', skus_controlados:72, skus_con_diferencia:5, unidades_teoricas:5300, unidades_fisicas:5261, diferencias_detectadas:5, diferencias_resueltas:2 }
-  ]
-kpi_comex: [
+  ],
+kpi_recepciones: [
   {
     fecha:'2026-05-21',
-    contenedores_transito:0,
-    usd_en_agua:0,
-    unidades_pendientes_recibir:0,
-    contenedores_atrasados:0
+    contenedores_programados:0,
+    contenedores_recibidos:0,
+    contenedores_pendientes:0,
+    unidades_programadas:0,
+    unidades_recibidas:0,
+    unidades_pendientes:0,
+    costo_camiones_contenedores:0,
+    personal_asignado:0,
+    horas_trabajadas:0 }
+],
+kpi_ecommerce: [
+  {
+    fecha:'2026-05-21',
+    pedidos_recibidos:0,
+    pedidos_preparados:0,
+    pedidos_despachados:0,
+    pedidos_pendientes:0,
+    unidades_preparadas:0,
+    incidencias:0
   }
 ]
 };
@@ -57,10 +72,12 @@ const sectorFields = {
   Deposito: ['pedidos_a_preparar','pedidos_preparados','pedidos_pendientes','posiciones_ocupadas','posiciones_totales','incidencias_abiertas','incidencias_cerradas'],
   Transporte: ['viajes_programados','viajes_realizados','viajes_demorados','viajes_cumplidos','costo_transporte','facturacion_despachada'],
   Inventario: ['skus_controlados','skus_con_diferencia','unidades_teoricas','unidades_fisicas','diferencias_detectadas','diferencias_resueltas','diferencias_pendientes_actuales','skus_totales_activos','skus_con_diferencia_pendiente','unidades_teoricas_totales','unidades_con_diferencia_pendiente'],
-  Administracion: ['pedidos_entregados','pedidos_entregados_a_tiempo','pedidos_completos','pedidos_otif','remitos_pendientes','cambios_estado_pendientes']
+  Administracion: ['pedidos_entregados','pedidos_entregados_a_tiempo','pedidos_completos','pedidos_otif','remitos_pendientes','cambios_estado_pendientes'],
 Comex: ['contenedores_transito','usd_en_agua','unidades_pendientes_recibir','contenedores_atrasados'],
+Recepciones: ['contenedores_programados','contenedores_recibidos','contenedores_pendientes','unidades_programadas','unidades_recibidas','unidades_pendientes','costo_camiones_contenedores','personal_asignado','horas_trabajadas'],
+Ecommerce:['pedidos_recibidos','pedidos_preparados','pedidos_despachados','pedidos_pendientes','unidades_preparadas','incidencias'],
 };
-const sectorTable = { Deposito:'kpi_deposito', Transporte:'kpi_transporte', Inventario:'kpi_inventario', Administracion:'kpi_administracion',Comex:'kpi_comex', };
+const sectorTable = { Deposito:'kpi_deposito', Transporte:'kpi_transporte', Inventario:'kpi_inventario', Administracion:'kpi_administracion',Comex:'kpi_comex',Recepciones:'kpi_recepciones',Ecommerce:'kpi_ecommerce',};
 
 function normalizeSectorName(value){
   const v = String(value || '').trim().toLowerCase();
@@ -100,6 +117,25 @@ const labels = {
 usd_en_agua:'USD en el agua',
 unidades_pendientes_recibir:'Unidades pendientes de recibir',
 contenedores_atrasados:'Contenedores atrasados',
+contenedores_transito:'Contenedores en tránsito',
+usd_en_agua:'USD en el agua',
+unidades_pendientes_recibir:'Unidades pendientes de recibir',
+contenedores_atrasados:'Contenedores atrasados',
+contenedores_programados:'Contenedores programados',
+contenedores_recibidos:'Contenedores recibidos',
+contenedores_pendientes:'Contenedores pendientes',
+unidades_programadas:'Unidades programadas',
+unidades_recibidas:'Unidades recibidas',
+unidades_pendientes:'Unidades pendientes',
+costo_camiones_contenedores:'Costo camiones contenedores',
+personal_asignado:'Personal asignado',
+horas_trabajadas:'Horas trabajadas',
+pedidos_recibidos:'Pedidos Ecommerce recibidos',
+pedidos_preparados:'Pedidos Ecommerce preparados',
+pedidos_despachados:'Pedidos Ecommerce despachados',
+pedidos_pendientes:'Pedidos Ecommerce pendientes',
+unidades_preparadas:'Unidades Ecommerce preparadas',
+incidencias:'Incidencias Ecommerce',
 };
 
 function iso(d){ return d.toISOString().slice(0,10); }
@@ -116,7 +152,7 @@ function latest(rows, key){ return rows.length ? Number(rows[rows.length-1][key]
 function pct(n,d){ return d ? +(n/d*100).toFixed(1) : 0; }
 function avg(values){ return values.length ? +(values.reduce((a,b)=>a+b,0)/values.length).toFixed(1) : 0; }
 function calc(rows){
-  const a=rows.kpi_administracion||[], d=rows.kpi_deposito||[], t=rows.kpi_transporte||[], i=rows.kpi_inventario||[], c=rows.kpi_comex||[];
+  const a=rows.kpi_administracion||[], d=rows.kpi_deposito||[], t=rows.kpi_transporte||[], i=rows.kpi_inventario||[], c=rows.kpi_comex||[], r=rows.kpi_recepciones||[], e=rows.kpi_ecommerce||[];
 
   const skusTotalesActivos = latest(i,'skus_totales_activos');
   const skusConDiferenciaPendiente = latest(i,'skus_con_diferencia_pendiente');
@@ -143,11 +179,23 @@ function calc(rows){
     diferenciasPendientes: latest(i,'diferencias_pendientes_actuales'),
     incidenciasAbiertas: latest(d,'incidencias_abiertas'),
     costoTransporte: pct(sum(t,'costo_transporte'), sum(t,'facturacion_despachada')),
-    cumplimientoTransportistas: pct(sum(t,'viajes_cumplidos'), sum(t,'viajes_programados'))
+    cumplimientoTransportistas: pct(sum(t,'viajes_cumplidos'), sum(t,'viajes_programados')),
     contenedoresTransito: latest(c,'contenedores_transito'),
     usdEnAgua: latest(c,'usd_en_agua'),
     unidadesPendientesRecibir: latest(c,'unidades_pendientes_recibir'),
-    contenedoresAtrasados: latest(c,'contenedores_atrasados'),};
+    contenedoresAtrasados: latest(c,'contenedores_atrasados'),
+    contenedoresProgramados: latest(r,'contenedores_programados'),
+    contenedoresRecibidos: latest(r,'contenedores_recibidos'),
+    contenedoresPendientes: latest(r,'contenedores_pendientes'),
+    unidadesProgramadas: latest(r,'unidades_programadas'),
+    unidadesRecibidas: latest(r,'unidades_recibidas'),
+    unidadesPendientes: latest(r,'unidades_pendientes'),
+    costoCamionesContenedores: latest(r,'costo_camiones_contenedores'),
+    productividadRecepcion: pct(latest(r,'unidades_recibidas'), latest(r,'horas_trabajadas')),
+    cumplimientoEcommerce: pct(sum(e,'pedidos_preparados'), sum(e,'pedidos_recibidos')),
+    pedidosPendientesEcommerce: latest(e,'pedidos_pendientes'),
+    unidadesPreparadasEcommerce: sum(e,'unidades_preparadas'),
+    incidenciasEcommerce: sum(e,'incidencias')};
 }
 function trendData(rows){
   const dates=[...new Set(Object.values(rows).flat().map(r=>r.fecha))].sort();
@@ -190,7 +238,17 @@ function Dashboard({rows,prevRows,range,onRefresh,loading}){
   if(k.precision<98) alerts.push(['bad','Exactitud SKU debajo de 98%. Revisar diferencias pendientes de inventario.']);
   if(k.precisionUnidades<98) alerts.push(['bad','Exactitud por unidades debajo de 98%. Revisar unidades con diferencia pendiente.']);
   if(k.precision>=98 && k.precisionUnidades>=98) alerts.push(['ok','Exactitud de inventario dentro de objetivo ≥ 98%.']);
-  return <main className="dashboard"><div className="kpi-grid"><KpiCard title="OTIF" value={k.otif} suffix="%" icon={CheckCircle2} previous={p.otif}/><KpiCard title="OTD" value={k.otd} suffix="%" icon={Clock} previous={p.otd}/><KpiCard title="Pendientes" value={k.pendientes} icon={AlertTriangle} type="inverse" previous={p.pendientes}/><KpiCard title="Preparados" value={k.preparados} icon={Boxes} previous={p.preparados}/><KpiCard title="Despachados" value={k.despachados} icon={Truck} previous={p.despachados}/><KpiCard title="Ocupación" value={k.ocupacion} suffix="%" icon={Warehouse} type="occupancy" previous={p.ocupacion}/><KpiCard title="Exactitud SKU" value={k.precision} suffix="%" icon={Shield} previous={p.precision}/><KpiCard title="Exactitud Unid." value={k.precisionUnidades} suffix="%" icon={Shield} previous={p.precisionUnidades}/><KpiCard title="Dif. Pendientes" value={k.diferenciasPendientes} icon={AlertTriangle} type="inverse" previous={p.diferenciasPendientes}/><KpiCard title="Incidencias" value={k.incidenciasAbiertas} icon={AlertTriangle} type="inverse" previous={p.incidenciasAbiertas}/><KpiCard title="Costo Transp." value={k.costoTransporte} suffix="%" icon={DollarSign} type="inverse" previous={p.costoTransporte}/><KpiCard title="Transportistas" value={k.cumplimientoTransportistas} suffix="%" icon={Gauge} previous={p.cumplimientoTransportistas}/></div><section className="panel-grid"><div className="panel wide"><h2>Tendencia del período</h2><ResponsiveContainer width="100%" height={310}><LineChart data={td}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.08)"/><XAxis dataKey="fecha" stroke="#94a3b8"/><YAxis stroke="#94a3b8"/><Tooltip contentStyle={{background:'#020617',border:'1px solid #334155',borderRadius:12}}/><Line dataKey="OTIF" stroke="#22d3ee" strokeWidth={3}/><Line dataKey="OTD" stroke="#a78bfa" strokeWidth={3}/><Line dataKey="Ocupacion" stroke="#34d399" strokeWidth={3}/><Line dataKey="Inventario" stroke="#facc15" strokeWidth={3}/></LineChart></ResponsiveContainer></div><div className="panel"><h2>Lectura gerencial</h2><div className="executive"><strong>{k.otif<90 && p.otif>=90?'Mal día/período puntual contra una base anterior mejor. No sobrerreaccionar, pero auditar causas.': k.otif>=95?'Performance saludable. Mantener foco en consistencia y costos.':'Performance aceptable, pero por debajo de excelencia. Buscar desvíos repetidos.'}</strong><p>Vista: {range.label}. El botón actualizar reconsulta Supabase y recalcula el período completo, no solo el día.</p></div><div className="alerts">{alerts.map((a,i)=><div className={`alert ${a[0]}`} key={i}>{a[0]==='ok'?<CheckCircle2/>:<AlertTriangle/>}<span>{a[1]}</span></div>)}</div></div><div className="panel"><h2>Performance por sector</h2><ResponsiveContainer width="100%" height={250}><BarChart data={[{sector:'Depósito',valor: pct(sum(rows.kpi_deposito||[],'pedidos_preparados'), sum(rows.kpi_deposito||[],'pedidos_a_preparar'))},{sector:'Transporte',valor:k.cumplimientoTransportistas},{sector:'Inventario',valor:k.precision},{sector:'Admin',valor:k.otif}]}><XAxis dataKey="sector" stroke="#94a3b8"/><YAxis stroke="#94a3b8"/><Tooltip contentStyle={{background:'#020617',border:'1px solid #334155',borderRadius:12}}/><Bar dataKey="valor" fill="#22d3ee" radius={[10,10,0,0]}/></BarChart></ResponsiveContainer></div><div className="panel"><h2>Incidencias</h2><ResponsiveContainer width="100%" height={250}><PieChart><Pie data={[{name:'Cerradas',value:sum(rows.kpi_deposito||[],'incidencias_cerradas')},{name:'Abiertas',value:k.incidenciasAbiertas}]} dataKey="value" nameKey="name" outerRadius={88} label><Cell fill="#34d399"/><Cell fill="#f87171"/></Pie><Tooltip contentStyle={{background:'#020617',border:'1px solid #334155',borderRadius:12}}/></PieChart></ResponsiveContainer></div></section></main>
+  return <main className="dashboard"><div className="kpi-grid"><KpiCard title="OTIF" value={k.otif} suffix="%" icon={CheckCircle2} previous={p.otif}/><KpiCard title="OTD" value={k.otd} suffix="%" icon={Clock} previous={p.otd}/><KpiCard title="Pendientes" value={k.pendientes} icon={AlertTriangle} type="inverse" previous={p.pendientes}/><KpiCard title="Preparados" value={k.preparados} icon={Boxes} previous={p.preparados}/><KpiCard title="Despachados" value={k.despachados} icon={Truck} previous={p.despachados}/><KpiCard title="Ocupación" value={k.ocupacion} suffix="%" icon={Warehouse} type="occupancy" previous={p.ocupacion}/><KpiCard title="Exactitud SKU" value={k.precision} suffix="%" icon={Shield} previous={p.precision}/><KpiCard title="Exactitud Unid." value={k.precisionUnidades} suffix="%" icon={Shield} previous={p.precisionUnidades}/><KpiCard title="Dif. Pendientes" value={k.diferenciasPendientes} icon={AlertTriangle} type="inverse" previous={p.diferenciasPendientes}/><KpiCard title="Incidencias" value={k.incidenciasAbiertas} icon={AlertTriangle} type="inverse" previous={p.incidenciasAbiertas}/><KpiCard title="Costo Transp." value={k.costoTransporte} suffix="%" icon={DollarSign} type="inverse" previous={p.costoTransporte}/><KpiCard title="Transportistas" value={k.cumplimientoTransportistas} suffix="%" icon={Gauge} previous={p.cumplimientoTransportistas}/><KpiCard title="Cont. tránsito" value={k.contenedoresTransito} icon={Truck}/>
+<KpiCard title="USD en agua" value={k.usdEnAgua} icon={DollarSign}/>
+<KpiCard title="Unid. pend. recibir" value={k.unidadesPendientesRecibir} icon={Boxes}/>
+<KpiCard title="Cont. atrasados" value={k.contenedoresAtrasados} icon={AlertTriangle} type="inverse"/>
+<KpiCard title="Cont. recibidos" value={k.contenedoresRecibidos} icon={Warehouse}/>
+<KpiCard title="Cont. pendientes" value={k.contenedoresPendientes} icon={AlertTriangle} type="inverse"/>
+<KpiCard title="Unid. recibidas" value={k.unidadesRecibidas} icon={Boxes}/>
+<KpiCard title="Costo camiones" value={k.costoCamionesContenedores} icon={DollarSign}/><KpiCard title="Ecommerce %" value={k.cumplimientoEcommerce} suffix="%" icon={Gauge}/>
+<KpiCard title="Ecom. pendientes" value={k.pedidosPendientesEcommerce} icon={AlertTriangle} type="inverse"/>
+<KpiCard title="Ecom. unidades" value={k.unidadesPreparadasEcommerce} icon={Boxes}/>
+<KpiCard title="Ecom. incidencias" value={k.incidenciasEcommerce} icon={AlertTriangle} type="inverse"/></div><section className="panel-grid"><div className="panel wide"><h2>Tendencia del período</h2><ResponsiveContainer width="100%" height={310}><LineChart data={td}><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.08)"/><XAxis dataKey="fecha" stroke="#94a3b8"/><YAxis stroke="#94a3b8"/><Tooltip contentStyle={{background:'#020617',border:'1px solid #334155',borderRadius:12}}/><Line dataKey="OTIF" stroke="#22d3ee" strokeWidth={3}/><Line dataKey="OTD" stroke="#a78bfa" strokeWidth={3}/><Line dataKey="Ocupacion" stroke="#34d399" strokeWidth={3}/><Line dataKey="Inventario" stroke="#facc15" strokeWidth={3}/></LineChart></ResponsiveContainer></div><div className="panel"><h2>Lectura gerencial</h2><div className="executive"><strong>{k.otif<90 && p.otif>=90?'Mal día/período puntual contra una base anterior mejor. No sobrerreaccionar, pero auditar causas.': k.otif>=95?'Performance saludable. Mantener foco en consistencia y costos.':'Performance aceptable, pero por debajo de excelencia. Buscar desvíos repetidos.'}</strong><p>Vista: {range.label}. El botón actualizar reconsulta Supabase y recalcula el período completo, no solo el día.</p></div><div className="alerts">{alerts.map((a,i)=><div className={`alert ${a[0]}`} key={i}>{a[0]==='ok'?<CheckCircle2/>:<AlertTriangle/>}<span>{a[1]}</span></div>)}</div></div><div className="panel"><h2>Performance por sector</h2><ResponsiveContainer width="100%" height={250}><BarChart data={[{sector:'Depósito',valor: pct(sum(rows.kpi_deposito||[],'pedidos_preparados'), sum(rows.kpi_deposito||[],'pedidos_a_preparar'))},{sector:'Transporte',valor:k.cumplimientoTransportistas},{sector:'Inventario',valor:k.precision},{sector:'Admin',valor:k.otif}]}><XAxis dataKey="sector" stroke="#94a3b8"/><YAxis stroke="#94a3b8"/><Tooltip contentStyle={{background:'#020617',border:'1px solid #334155',borderRadius:12}}/><Bar dataKey="valor" fill="#22d3ee" radius={[10,10,0,0]}/></BarChart></ResponsiveContainer></div><div className="panel"><h2>Incidencias</h2><ResponsiveContainer width="100%" height={250}><PieChart><Pie data={[{name:'Cerradas',value:sum(rows.kpi_deposito||[],'incidencias_cerradas')},{name:'Abiertas',value:k.incidenciasAbiertas}]} dataKey="value" nameKey="name" outerRadius={88} label><Cell fill="#34d399"/><Cell fill="#f87171"/></Pie><Tooltip contentStyle={{background:'#020617',border:'1px solid #334155',borderRadius:12}}/></PieChart></ResponsiveContainer></div></section></main>
 }
 function DataEntry({perfil,onSaved}){
   const sectors = accessSectors(perfil);
