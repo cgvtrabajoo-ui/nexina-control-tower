@@ -95,9 +95,12 @@ function fallbackProfileFromEmail(email){
     'rflores@nexina.com.ar': {nombre:'Gabriel Flores', sector:'Deposito', sectores:['Deposito'], rol:'usuario'},
     'lldesma@nexina.com.ar': {nombre:'Luis Ledesma', sector:'Transporte', sectores:['Transporte'], rol:'usuario'},
     'lledesma@nexina.com.ar': {nombre:'Luis Ledesma', sector:'Transporte', sectores:['Transporte'], rol:'usuario'},
-    'marina.blanco@nexina.com.ar': {nombre:'Marina Blanco', sector:'Administracion', sectores:['Transporte','Administracion'], rol:'usuario'},
+    'marina.blanco@nexina.com.ar': {nombre:'Marina Blanco', sector:'Administracion', sectores:['Transporte','Administracion','Ecommerce'], rol:'usuario'},
     'mwalker@nexina.com.ar': {nombre:'Marcelo Walker', sector:'Inventario', sectores:['Inventario'], rol:'usuario'},
     'dpierotti@nexina.com.ar': {nombre:'Daiana Pierotti', sector:'Administracion', sectores:['Administracion'], rol:'usuario'},
+    'jstern@nexina.com.ar': {nombre:'Jesica Stern', sector:'Ecommerce', sectores:['Ecommerce'], rol:'usuario'},
+    'atanzi@nexina.com.ar': {nombre:'Atanzi', sector:'Comex', sectores:['Comex'], rol:'usuario'},
+    'jaguilera@nexina.com.ar': {nombre:'J. Aguilera', sector:'Comex', sectores:['Comex'], rol:'usuario'},
   };
   const base = map[String(email || '').toLowerCase()] || {nombre: email || 'Usuario', sector:'General', sectores:[], rol:'usuario'};
   return { email, ...base };
