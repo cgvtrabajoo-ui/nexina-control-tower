@@ -76,7 +76,7 @@ const sectorFields = {
   Administracion: ['pedidos_entregados','pedidos_entregados_a_tiempo','pedidos_completos','pedidos_otif','remitos_pendientes','cambios_estado_pendientes'],
 Comex: ['contenedores_transito','usd_en_agua','unidades_pendientes_recibir','contenedores_atrasados'],
 Recepciones: ['contenedores_programados','contenedores_recibidos','contenedores_pendientes','unidades_programadas','unidades_recibidas','unidades_pendientes','costo_camiones_contenedores','personal_asignado','horas_trabajadas'],
-Ecommerce:['pedidos_recibidos','pedidos_preparados','pedidos_cancelados','pedidos_despachados','pedidos_pendientes','unidades_preparadas','incidencias'],
+Ecommerce:['ecom_pedidos_recibidos','ecom_pedidos_preparados','ecom_pedidos_cancelados','ecom_pedidos_despachados','ecom_pedidos_pendientes','ecom_unidades_preparadas','ecom_incidencias'],
 };
 const sectorTable = { Deposito:'kpi_deposito', Transporte:'kpi_transporte', Inventario:'kpi_inventario', Administracion:'kpi_administracion',Comex:'kpi_comex',Recepciones:'kpi_recepciones',Ecommerce:'kpi_ecommerce',};
 
@@ -134,13 +134,13 @@ unidades_pendientes:'Unidades pendientes',
 costo_camiones_contenedores:'Costo camiones contenedores',
 personal_asignado:'Personal asignado',
 horas_trabajadas:'Horas trabajadas',
-pedidos_recibidos:'Pedidos Ecommerce recibidos',
-pedidos_preparados:'Pedidos Ecommerce preparados',
-pedidos_cancelados:'Pedidos Ecommerce cancelados',
-pedidos_despachados:'Pedidos Ecommerce despachados',
-pedidos_pendientes:'Pedidos Ecommerce pendientes',
-unidades_preparadas:'Unidades Ecommerce preparadas',
-incidencias:'Incidencias Ecommerce',
+ecom_pedidos_recibidos:'Pedidos Ecommerce recibidos',
+ecom_pedidos_preparados:'Pedidos Ecommerce preparados',
+ecom_pedidos_cancelados:'Pedidos Ecommerce cancelados',
+ecom_pedidos_despachados:'Pedidos Ecommerce despachados',
+ecom_pedidos_pendientes:'Pedidos Ecommerce pendientes',
+ecom_unidades_preparadas:'Unidades Ecommerce preparadas',
+ecom_incidencias:'Incidencias Ecommerce',
 };
 
 function iso(d){ return d.toISOString().slice(0,10); }
