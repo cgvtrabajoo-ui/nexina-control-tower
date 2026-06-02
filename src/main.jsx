@@ -92,11 +92,11 @@ function normalizeSectorName(value){
 function fallbackProfileFromEmail(email){
   const map = {
     'cgvtrabajoo@gmail.com': {nombre:'Gabriel Velarde', sector:'Gerencia', sectores:['Deposito','Transporte','Inventario','Administracion'], rol:'gerente'},
-    'rflores@nexina.com.ar': {nombre:'Gabriel Flores', sector:'Deposito', sectores:['Deposito'], rol:'usuario'},
+    'rflores@nexina.com.ar': {nombre:'Gabriel Flores', sector:'Deposito', sectores:['Deposito','Recepciones'], rol:'usuario'},
     'lldesma@nexina.com.ar': {nombre:'Luis Ledesma', sector:'Transporte', sectores:['Transporte'], rol:'usuario'},
     'lledesma@nexina.com.ar': {nombre:'Luis Ledesma', sector:'Transporte', sectores:['Transporte'], rol:'usuario'},
     'marina.blanco@nexina.com.ar': {nombre:'Marina Blanco', sector:'Administracion', sectores:['Transporte','Administracion','Ecommerce'], rol:'usuario'},
-    'mwalker@nexina.com.ar': {nombre:'Marcelo Walker', sector:'Inventario', sectores:['Inventario'], rol:'usuario'},
+    'mwalker@nexina.com.ar': {nombre:'Marcelo Walker', sector:'Inventario', sectores:['Inventario','Recepciones'], rol:'usuario'},
     'dpierotti@nexina.com.ar': {nombre:'Daiana Pierotti', sector:'Administracion', sectores:['Administracion'], rol:'usuario'},
     'jstern@nexina.com.ar': {nombre:'Jesica Stern', sector:'Ecommerce', sectores:['Ecommerce'], rol:'usuario'},
     'atanzi@nexina.com.ar': {nombre:'Atanzi', sector:'Comex', sectores:['Comex'], rol:'usuario'},
