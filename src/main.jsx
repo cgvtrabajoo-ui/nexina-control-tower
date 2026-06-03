@@ -76,7 +76,7 @@ const sectorFields = {
   Administracion: ['pedidos_entregados','pedidos_entregados_a_tiempo','pedidos_completos','pedidos_otif','remitos_pendientes','cambios_estado_pendientes'],
 Comex: ['contenedores_transito','usd_en_agua','unidades_pendientes_recibir','contenedores_atrasados'],
 Recepciones: ['contenedores_programados','contenedores_recibidos','contenedores_pendientes','unidades_programadas','unidades_recibidas','unidades_pendientes','costo_camiones_contenedores','personal_asignado','horas_trabajadas'],
-Ecommerce:['ecom_pedidos_recibidos','ecom_pedidos_preparados','ecom_pedidos_cancelados','ecom_pedidos_despachados','ecom_pedidos_pendientes','ecom_unidades_preparadas','ecom_incidencias'],
+Ecommerce:['ecom_pedidos_recibidos','ecom_pedidos_preparados','ecom_pedidos_cancelados','ecom_pedidos_despachados','ecom_pedidos_pendientes','ecom_unidades_preparadas','incidencias'],
 };
 const sectorTable = { Deposito:'kpi_deposito', Transporte:'kpi_transporte', Inventario:'kpi_inventario', Administracion:'kpi_administracion',Comex:'kpi_comex',Recepciones:'kpi_recepciones',Ecommerce:'kpi_ecommerce',};
 
